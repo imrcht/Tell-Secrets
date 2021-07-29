@@ -59,9 +59,8 @@ passport.use(new GoogleStrategy({
     userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
   },
   function(accessToken, refreshToken, profile, cb) {
-    console.log(profile);
 
-    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+    User.findOrCreate({ googleId: profile.id, username: profile.emails[0].value }, function (err, user) {
       return cb(err, user);
     });
   }
@@ -72,7 +71,7 @@ app.get("/", function(req, res){
 });
 
 app.get("/auth/google",
-  passport.authenticate('google', { scope: ["profile"] })
+  passport.authenticate('google', { scope: ["profile","email"] })
 );
 
 app.get("/auth/google/secrets",
@@ -91,17 +90,50 @@ app.get("/register", function(req, res){
 });
 
 app.get("/secrets", function(req, res){
-  if (req.isAuthenticated()) {
-      res.render("secrets");
-  } else {
-      res.redirect("/login")
-  }
+  User.find({"secret": {$ne: null}}, (err, foundusers) => {
+    if (err) {
+        console.log(err);
+    } else {
+        if (foundusers) {
+            res.render("secrets", {
+              userSecrets: foundusers,
+            });
+        } else {
+            console.log("No user found");
+        }
+      }
+  })
 });
 
+app.get("/submit", (req, res) => {
+    if (req.isAuthenticated()) {
+        res.render("submit");
+    } else {
+        res.redirect("/login");
+    }
+})
 
 app.get("/logout", function(req, res){
     req.logout();
     res.redirect("/");
+});
+
+app.post("/submit", (req, res) => {
+    submittedsecret = req.body.secret;
+    User.findById(req.user._id, (err, foundUser) => {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                foundUser.secret = submittedsecret
+                foundUser.save(() => {
+                    res.redirect("/secrets");
+                });
+            } else {
+                console.log("User not found");
+            }
+        }
+    })
 });
 
 app.post("/register", function(req, res){
