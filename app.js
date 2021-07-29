@@ -67,7 +67,12 @@ passport.use(new GoogleStrategy({
 ));
 
 app.get("/", function(req, res){
-  res.render("home");
+  if(req.isAuthenticated()){
+    console.log(req.user);
+    res.redirect("/secrets")
+  } else {
+    res.render("home");
+  }
 });
 
 app.get("/auth/google",
@@ -79,7 +84,7 @@ app.get("/auth/google/secrets",
   function(req, res) {
     // Successful authentication, redirect to secrets.
     res.redirect("/secrets");
-  });
+});
 
 app.get("/login", function(req, res){
   res.render("login");
@@ -95,9 +100,17 @@ app.get("/secrets", function(req, res){
         console.log(err);
     } else {
         if (foundusers) {
-            res.render("secrets", {
-              userSecrets: foundusers,
-            });
+            if (req.user) {
+              res.render("secrets", {
+                username: req.user.username,
+                userSecrets: foundusers,
+              });
+            } else {
+              res.render("secrets", {
+                username: "",
+                userSecrets: foundusers,
+              });
+            }
         } else {
             console.log("No user found");
         }
